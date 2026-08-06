@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TinyRecipely — калькулятор рецептур</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>🥟 TinyRecipely</h1>
+  <p>Калькулятор производственных рецептур: пельмени · вареники · котлеты</p>
+</header>
+
+<div class="tabs">
+  <button data-mode="product" class="active">Готовый продукт</button>
+  <button data-mode="farsh">Фарш / начинки</button>
+  <button data-mode="dough">Только тесто</button>
+  <button data-mode="fromFarsh">Тесто к фаршу</button>
+</div>
+
+<div class="panel">
+  <div class="row" id="rowProduct">
+    <div class="field">
+      <label>Продукт</label>
+      <select id="selProduct"></select>
+    </div>
+    <div class="field" id="fieldFilling">
+      <label id="lblFilling">Фарш / начинка</label>
+      <select id="selFilling"></select>
+    </div>
+    <div class="field" id="fieldDough" style="display:none">
+      <label>Тесто</label>
+      <select id="selDough"></select>
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label id="lblWeight">Сколько нужно, кг</label>
+      <div class="stepper">
+        <button id="btnMinus">−</button>
+        <input type="number" id="inpWeight" value="3" min="0.5" step="0.5">
+        <button id="btnPlus">+</button>
+      </div>
+    </div>
+    <div class="field" id="fieldRatio">
+      <label>Доля теста, %</label>
+      <input type="number" id="inpRatio" min="35" max="65" step="1">
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <button id="printBtn">🖨️ Печать</button>
+  <button id="copyBtn">📋 Скопировать</button>
+</div>
+
+<div class="panel print-area" id="result">Загрузка рецептур…</div>
+
+<footer>TinyRecipely v1 · рецептуры в data/recipes.json · все граммовки пересчитываются от нужной массы</footer>
+
+<script src="js/app.js"></script>
+</body>
+</html>
