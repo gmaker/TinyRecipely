@@ -326,6 +326,7 @@ function bindEvents() {
       document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       mode = b.dataset.mode;
+      history.replaceState(null, '', '#' + mode);
       fillProductSelect();
       fillFillingSelect();
       updateVisibility();
@@ -423,6 +424,9 @@ async function init() {
   fillFillingSelect();
   fillDoughSelect();
   bindEvents();
+  // открытие вкладки по хэшу: #farsh, #dough, #fromFarsh, #prices
+  const hashTab = document.querySelector(`.tabs button[data-mode="${location.hash.slice(1)}"]`);
+  if (hashTab) { hashTab.click(); return; }
   updateVisibility();
   render();
 }
