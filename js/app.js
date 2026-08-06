@@ -65,7 +65,7 @@ function econFor(parts, massG) {
     ? rows.map(([l, c]) => `<tr><td>${l}</td><td class="note"></td><td class="amt">${Math.round(c)} ₽</td></tr>`).join('')
     : '';
   rowsHtml += `<tr class="total"><td>Себестоимость</td><td class="note">${Math.round(perKg)} ₽/кг</td><td class="amt">${Math.round(grand)} ₽</td></tr>`;
-  const html = `<div class="block"><h3>💰 Экономика</h3><table class="ing">${rowsHtml}</table>` +
+  const html = `<div class="block econ"><h3>💰 Экономика</h3><table class="ing">${rowsHtml}</table>` +
     `<div class="hint">Рекомендуемая цена продажи: <b>${pMin}–${pMax} ₽/кг</b> (наценка ×${MARKUP.min}–×${MARKUP.max}). ` +
     `Учтены только ингредиенты с ценой — правятся во вкладке «Цены».</div></div>`;
 

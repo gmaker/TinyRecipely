@@ -80,7 +80,7 @@ footer a { color: var(--accent); }
 
 @media print {
   body { background: #fff; padding: 0; max-width: none; }
-  header p, .tabs, .actions, footer { display: none !important; }
+  header p, .tabs, .actions, footer, .econ { display: none !important; }
   .panel:not(.print-area) { display: none !important; }
   .print-area { display: block !important; border: none; padding: 0; }
   table.ing td { font-size: 13px; padding: 3px 4px; }
