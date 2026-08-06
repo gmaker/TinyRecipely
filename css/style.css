@@ -76,6 +76,7 @@ table.ing tr.total td { border-bottom: none; border-top: 2px solid var(--line); 
 .error { color: #a33; font-size: 14px; }
 
 footer { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0; }
+footer a { color: var(--accent); }
 
 @media print {
   body { background: #fff; padding: 0; max-width: none; }
