@@ -2,6 +2,9 @@
 // Все рецептуры лежат в data/recipes.json (раскладки на 1000 г готовой массы).
 
 let DOUGHS, FILLINGS, PRODUCTS, FARSH_ONLY;
+let PRICES_DEFAULT = {}, MARKUP_DEFAULT = { min: 2.5, max: 3 };
+let PRICES = {}, MARKUP = { min: 2.5, max: 3 };
+const PRICES_LS = 'tinyrecipely_prices';
 
 const $ = id => document.getElementById(id);
 let mode = 'product';
@@ -35,6 +38,44 @@ function scale(recipe, targetG) {
   return recipe.items.map(i => ({ ...i, g: i.g * targetG / base }));
 }
 
+// ---------- себестоимость ----------
+function priceFor(name) {
+  const n = name.toLowerCase();
+  for (const k of Object.keys(PRICES).sort((a, b) => b.length - a.length)) {
+    if (n.includes(k)) return PRICES[k];
+  }
+  return 0;
+}
+
+// parts: [{label, items}], massG — масса готового продукта
+function econFor(parts, massG) {
+  const rows = [];
+  let grand = 0;
+  for (const part of parts) {
+    const c = part.items.reduce((s, it) => s + it.g / 1000 * priceFor(it.n), 0);
+    grand += c;
+    rows.push([part.label, c]);
+  }
+  if (grand <= 0) return { html: '', text: '' };
+  const perKg = grand / (massG / 1000);
+  const pMin = Math.round(perKg * MARKUP.min / 10) * 10;
+  const pMax = Math.round(perKg * MARKUP.max / 10) * 10;
+
+  let rowsHtml = rows.length > 1
+    ? rows.map(([l, c]) => `<tr><td>${l}</td><td class="note"></td><td class="amt">${Math.round(c)} ₽</td></tr>`).join('')
+    : '';
+  rowsHtml += `<tr class="total"><td>Себестоимость</td><td class="note">${Math.round(perKg)} ₽/кг</td><td class="amt">${Math.round(grand)} ₽</td></tr>`;
+  const html = `<div class="block"><h3>💰 Экономика</h3><table class="ing">${rowsHtml}</table>` +
+    `<div class="hint">Рекомендуемая цена продажи: <b>${pMin}–${pMax} ₽/кг</b> (наценка ×${MARKUP.min}–×${MARKUP.max}). ` +
+    `Учтены только ингредиенты с ценой — правятся во вкладке «Цены».</div></div>`;
+
+  const text = `\n💰 Экономика:\n` +
+    (rows.length > 1 ? rows.map(([l, c]) => `• ${l} — ${Math.round(c)} ₽\n`).join('') : '') +
+    `• Себестоимость — ${Math.round(grand)} ₽ (${Math.round(perKg)} ₽/кг)\n` +
+    `• Рекомендуемая цена: ${pMin}–${pMax} ₽/кг\n`;
+  return { html, text };
+}
+
 // ---------- рендер блоков ----------
 function ingBlockHTML(title, targetG, items, extraRows) {
   let rows = items.map(i => {
@@ -60,11 +101,12 @@ function ingBlockText(title, targetG, items, extraLines) {
 }
 
 function extraFor(filling, targetG) {
-  if (!filling.extra) return { row: '', line: '' };
+  if (!filling.extra) return { row: '', line: '', item: null };
   const eg = filling.extra.per1000 * targetG / 1000;
   return {
     row: `<tr><td>${filling.extra.n}</td><td class="note"></td><td class="amt">${fmtG(eg)}</td></tr>`,
     line: `• ${filling.extra.n} — ${fmtG(eg)}\n`,
+    item: { n: filling.extra.n, g: eg },
   };
 }
 
@@ -74,6 +116,8 @@ function techListText(steps) {
 
 // ---------- главный пересчёт ----------
 function render() {
+  if (mode === 'prices') { renderPrices(); return; }
+
   const weightKg = Math.max(0.5, parseFloat($('inpWeight').value) || 0.5);
   const targetG = weightKg * 1000;
   let html = '', text = '';
@@ -81,10 +125,13 @@ function render() {
   if (mode === 'dough') {
     const d = DOUGHS[$('selDough').value];
     const items = scale(d, targetG);
+    const econ = econFor([{ label: 'Тесто', items }], targetG);
     html += `<h2>${d.name}</h2><div class="sub">${d.desc}</div>`;
     html += ingBlockHTML('Ингредиенты', targetG, items);
+    html += econ.html;
     html += techBlockHTML('Технология', d.tech);
     text = d.name.toUpperCase() + `\n\n` + ingBlockText('Ингредиенты', targetG, items)
+         + econ.text
          + `\nТехнология:\n` + techListText(d.tech);
   }
 
@@ -92,10 +139,13 @@ function render() {
     const f = FILLINGS[$('selFilling').value];
     const items = scale(f, targetG);
     const ex = extraFor(f, targetG);
+    const econ = econFor([{ label: f.name, items: ex.item ? [...items, ex.item] : items }], targetG);
     html += `<h2>${f.name}</h2><div class="sub">Выход: ${fmtKg(weightKg)}</div>`;
     html += ingBlockHTML('Ингредиенты', targetG, items, ex.row);
+    html += econ.html;
     html += techBlockHTML('Технология', f.tech);
     text = f.name.toUpperCase() + `\n\n` + ingBlockText('Ингредиенты', targetG, items, ex.line)
+         + econ.text
          + `\nТехнология:\n` + techListText(f.tech);
   }
 
@@ -121,6 +171,11 @@ function render() {
     const totalG = fillG + doughG;
     const pieces = Math.round(totalG / p.pieceG);
     const doughItems = scale(dough, doughG);
+    // для себестоимости раскладываем фарш целиком (база + добавки) по рецепту
+    const econ = econFor([
+      { label: 'Фарш целиком', items: scale(f, fillG) },
+      { label: 'Тесто', items: doughItems },
+    ], totalG);
 
     html += `<h2>${p.emoji} ${p.name}: к ${fmtKg(weightKg)} фарша-базы</h2>`;
     html += `<div class="sub">База — мясо с луком. Фарш с добавками: <b>${fmtG(fillG)}</b> · теста нужно: <b>${fmtG(doughG)}</b> · выход ≈ ${fmtKg(totalG / 1000)} (≈ ${pieces} шт, ${p.pieceNote}) · тесто ${share}% / начинка ${100 - share}%</div>`;
@@ -132,6 +187,7 @@ function render() {
       farshText = ingBlockText(`ДОБАВИТЬ В ФАРШ (${f.name})`, fillG, farshItems) + '\n';
     }
     html += ingBlockHTML(dough.name, doughG, doughItems);
+    html += econ.html;
     if (additions.length) html += techBlockHTML('Технология — фарш', f.tech);
     html += techBlockHTML('Технология — тесто', dough.tech);
 
@@ -139,6 +195,7 @@ function render() {
          + `Фарш с добавками: ${fmtG(fillG)} · теста нужно: ${fmtG(doughG)} · выход ≈ ${fmtKg(totalG / 1000)} (≈ ${pieces} шт)\n\n`
          + farshText
          + ingBlockText('ТЕСТО', doughG, doughItems)
+         + econ.text
          + (additions.length ? `\nФарш:\n` + techListText(f.tech) + '\n' : '')
          + `\nТесто:\n` + techListText(dough.tech);
   }
@@ -158,8 +215,13 @@ function render() {
 
       html += `<h2>${p.emoji} ${p.name} — ${fmtKg(weightKg)}</h2>`;
       html += `<div class="sub">≈ ${pieces} шт (${p.pieceNote}) · тесто ${share}% / начинка ${100 - share}%</div>`;
+      const econ = econFor([
+        { label: 'Тесто', items: doughItems },
+        { label: 'Начинка', items: fillItems },
+      ], targetG);
       html += ingBlockHTML(dough.name, doughG, doughItems);
       html += ingBlockHTML(f.name, fillG, fillItems);
+      html += econ.html;
       html += techBlockHTML('Технология — тесто', dough.tech);
       html += techBlockHTML('Технология — начинка', f.tech);
 
@@ -167,25 +229,55 @@ function render() {
            + `Тесто ${share}% / начинка ${100 - share}%\n\n`
            + ingBlockText('ТЕСТО', doughG, doughItems) + '\n'
            + ingBlockText(f.name.toUpperCase(), fillG, fillItems)
+           + econ.text
            + `\nТесто:\n` + techListText(dough.tech)
            + `\n\nНачинка:\n` + techListText(f.tech);
     } else {
       // котлеты: масса продукта = масса фарша, сухари сверху
       const fillItems = scale(f, targetG);
       const ex = extraFor(f, targetG);
+      const econ = econFor([
+        { label: f.name, items: ex.item ? [...fillItems, ex.item] : fillItems },
+      ], targetG);
       html += `<h2>${p.emoji} ${p.name} — ${fmtKg(weightKg)}</h2>`;
       html += `<div class="sub">≈ ${pieces} шт (${p.pieceNote})</div>`;
       html += ingBlockHTML(f.name, targetG, fillItems, ex.row);
+      html += econ.html;
       html += techBlockHTML('Технология', f.tech);
 
       text = `${p.emoji} ${p.name.toUpperCase()} — ${fmtKg(weightKg)} (≈ ${pieces} шт)\n\n`
            + ingBlockText(f.name.toUpperCase(), targetG, fillItems, ex.line)
+           + econ.text
            + `\nТехнология:\n` + techListText(f.tech);
     }
   }
 
   $('result').innerHTML = html;
   lastCopyText = text;
+}
+
+// ---------- вкладка «Цены» ----------
+function renderPrices() {
+  const inp = (attr, val, step) =>
+    `<input type="number" min="0" step="${step}" ${attr} value="${val}" style="width:110px;text-align:right">`;
+  const rows = Object.keys(PRICES_DEFAULT)
+    .map(k => `<tr><td>${k}</td><td class="note"></td><td class="amt">${inp(`data-pricekey="${k}"`, PRICES[k], 5)}</td></tr>`)
+    .join('');
+  $('result').innerHTML =
+    `<h2>💰 Цены и наценка</h2>` +
+    `<div class="sub">₽ за 1 кг. Что не считаем в себестоимости — оставь 0. Изменения сохраняются в этом браузере автоматически.</div>` +
+    `<div class="block"><h3>Наценка при продаже (×)</h3><table class="ing">` +
+    `<tr><td>Минимальная</td><td class="note"></td><td class="amt">${inp('data-markup="min"', MARKUP.min, 0.1)}</td></tr>` +
+    `<tr><td>Максимальная</td><td class="note"></td><td class="amt">${inp('data-markup="max"', MARKUP.max, 0.1)}</td></tr>` +
+    `</table></div>` +
+    `<div class="block"><h3>Цены ингредиентов, ₽/кг</h3><table class="ing">${rows}</table></div>` +
+    `<button id="resetPrices" style="padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:var(--accent-soft);color:var(--accent);font-weight:600;cursor:pointer">↺ Сбросить к исходным</button>`;
+  lastCopyText = 'ЦЕНЫ, ₽/КГ\n' +
+    Object.keys(PRICES_DEFAULT).filter(k => PRICES[k] > 0).map(k => `• ${k} — ${PRICES[k]} ₽`).join('\n');
+}
+
+function savePrices() {
+  localStorage.setItem(PRICES_LS, JSON.stringify({ prices: PRICES, markup: MARKUP }));
 }
 
 // ---------- селекторы ----------
@@ -211,6 +303,9 @@ function fillDoughSelect() {
 }
 
 function updateVisibility() {
+  $('controls').style.display = (mode === 'prices') ? 'none' : '';
+  document.querySelector('.actions').style.display = (mode === 'prices') ? 'none' : '';
+  if (mode === 'prices') return;
   const p = PRODUCTS[$('selProduct').value];
   const withDough = (mode === 'product' || mode === 'fromFarsh') && p.doughShare > 0;
   $('selProduct').parentElement.style.display = (mode === 'product' || mode === 'fromFarsh') ? '' : 'none';
@@ -252,6 +347,26 @@ function bindEvents() {
     render();
   });
 
+  // редактор цен: правки инпутов сохраняем сразу
+  $('result').addEventListener('input', e => {
+    const t = e.target;
+    if (t.dataset && t.dataset.pricekey !== undefined && t.dataset.pricekey !== '') {
+      PRICES[t.dataset.pricekey] = parseFloat(t.value) || 0;
+      savePrices();
+    } else if (t.dataset && t.dataset.markup) {
+      MARKUP[t.dataset.markup] = parseFloat(t.value) || MARKUP_DEFAULT[t.dataset.markup];
+      savePrices();
+    }
+  });
+  $('result').addEventListener('click', e => {
+    if (e.target.id === 'resetPrices') {
+      localStorage.removeItem(PRICES_LS);
+      PRICES = { ...PRICES_DEFAULT };
+      MARKUP = { ...MARKUP_DEFAULT };
+      renderPrices();
+    }
+  });
+
   $('printBtn').addEventListener('click', () => window.print());
   $('copyBtn').addEventListener('click', async () => {
     try {
@@ -282,6 +397,22 @@ async function init() {
     FILLINGS = data.fillings;
     PRODUCTS = data.products;
     FARSH_ONLY = data.farshOnly;
+
+    const pResp = await fetch('data/prices.json');
+    if (pResp.ok) {
+      const pData = await pResp.json();
+      PRICES_DEFAULT = pData.prices || {};
+      MARKUP_DEFAULT = pData.markup || MARKUP_DEFAULT;
+    }
+    PRICES = { ...PRICES_DEFAULT };
+    MARKUP = { ...MARKUP_DEFAULT };
+    try {
+      const saved = JSON.parse(localStorage.getItem(PRICES_LS));
+      if (saved) {
+        PRICES = { ...PRICES_DEFAULT, ...saved.prices };
+        MARKUP = { ...MARKUP_DEFAULT, ...saved.markup };
+      }
+    } catch (e) { /* битые сохранённые цены игнорируем */ }
   } catch (e) {
     $('result').innerHTML =
       `<p class="error">Не удалось загрузить data/recipes.json (${e.message}).<br>` +
