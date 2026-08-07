@@ -432,3 +432,12 @@ async function init() {
 }
 
 init();
+
+// счётчик просмотров в футере (публичный API GoatCounter)
+fetch('https://gmaker.goatcounter.com/counter/TOTAL.json')
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(d => {
+    $('viewsNum').textContent = d.count;
+    $('views').style.display = '';
+  })
+  .catch(() => { /* счётчик недоступен — просто не показываем */ });
