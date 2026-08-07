@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- тень -->
+  <ellipse cx="32" cy="55.5" rx="21" ry="3.5" fill="#000" opacity=".14"/>
+  <!-- купол пельменя -->
+  <path d="M9 45 a23 23 0 0 1 46 0 z" fill="#f6dfae" stroke="#8a5a2b" stroke-width="3" stroke-linejoin="round"/>
+  <!-- защипы по краю -->
+  <g fill="#f0d193" stroke="#8a5a2b" stroke-width="2.5">
+    <circle cx="14" cy="45" r="4.4"/>
+    <circle cx="23" cy="45" r="4.4"/>
+    <circle cx="32" cy="45" r="4.4"/>
+    <circle cx="41" cy="45" r="4.4"/>
+    <circle cx="50" cy="45" r="4.4"/>
+  </g>
+  <!-- блик -->
+  <path d="M17.5 34 a16 16 0 0 1 10.5 -9.5" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" opacity=".75"/>
+</svg>
