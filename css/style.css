@@ -84,4 +84,9 @@ footer a { color: var(--accent); }
   .panel:not(.print-area) { display: none !important; }
   .print-area { display: block !important; border: none; padding: 0; }
   table.ing td { font-size: 13px; padding: 3px 4px; }
+  /* контрастная печать: весь текст чёрный, линии тёмные */
+  * { color: #000 !important; }
+  .block h3 { border-bottom-color: #000; }
+  table.ing td { border-bottom-color: #888; }
+  table.ing tr.total td { border-top-color: #000; }
 }
