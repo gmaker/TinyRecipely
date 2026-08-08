@@ -653,7 +653,7 @@
     },
     "kotlety": {
       "name": "Котлеты",
-      "emoji": "🥩",
+      "emoji": "🍔",
       "doughShare": 0,
       "fillings": ["kotletBeef", "kotletBeefPork", "kotletChicken", "kotletTurkey"],
       "pieceG": 90,
