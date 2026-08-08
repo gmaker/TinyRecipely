@@ -149,57 +149,6 @@ function render() {
          + `\nТехнология:\n` + techListText(f.tech);
   }
 
-  else if (mode === 'fromFarsh') {
-    // есть заготовка фарша (мясо + лук) — считаем добавки в него и тесто под него
-    const p = PRODUCTS[$('selProduct').value];
-    const dough = DOUGHS[p.dough];
-    const f = FILLINGS[$('selFilling').value];
-    const share = Math.min(65, Math.max(35, parseFloat($('inpRatio').value) || p.doughShare));
-
-    const baseItems = f.items.filter(i => i.base);
-    let additions = [], fillG;
-    if (baseItems.length) {
-      const baseSum = baseItems.reduce((s, i) => s + i.g, 0);
-      const k = targetG / baseSum;
-      additions = f.items.filter(i => !i.base).map(i => ({ ...i, g: i.g * k }));
-      fillG = targetG + additions.reduce((s, i) => s + i.g, 0);
-    } else {
-      fillG = targetG; // начинка без базы (картошка и т.п.) — считаем готовой
-    }
-
-    const doughG = fillG * share / (100 - share);
-    const totalG = fillG + doughG;
-    const pieces = Math.round(totalG / p.pieceG);
-    const doughItems = scale(dough, doughG);
-    // для себестоимости раскладываем фарш целиком (база + добавки) по рецепту
-    const econ = econFor([
-      { label: 'Фарш целиком', items: scale(f, fillG) },
-      { label: 'Тесто', items: doughItems },
-    ], totalG);
-
-    html += `<h2>${p.emoji} ${p.name}: к ${fmtKg(weightKg)} фарша-базы</h2>`;
-    html += `<div class="sub">База — мясо с луком. Фарш с добавками: <b>${fmtG(fillG)}</b> · теста нужно: <b>${fmtG(doughG)}</b> · выход ≈ ${fmtKg(totalG / 1000)} (≈ ${pieces} шт, ${p.pieceNote}) · тесто ${share}% / начинка ${100 - share}%</div>`;
-
-    let farshText = '';
-    if (additions.length) {
-      const farshItems = [{ n: 'Фарш мясо + лук (уже готов)', g: targetG }, ...additions];
-      html += ingBlockHTML(`Добавить в фарш (${f.name})`, fillG, farshItems);
-      farshText = ingBlockText(`ДОБАВИТЬ В ФАРШ (${f.name})`, fillG, farshItems) + '\n';
-    }
-    html += ingBlockHTML(dough.name, doughG, doughItems);
-    html += econ.html;
-    if (additions.length) html += techBlockHTML('Технология — фарш', f.tech);
-    html += techBlockHTML('Технология — тесто', dough.tech);
-
-    text = `${p.emoji} ${p.name.toUpperCase()}: К ${fmtKg(weightKg)} ФАРША-БАЗЫ (МЯСО + ЛУК)\n`
-         + `Фарш с добавками: ${fmtG(fillG)} · теста нужно: ${fmtG(doughG)} · выход ≈ ${fmtKg(totalG / 1000)} (≈ ${pieces} шт)\n\n`
-         + farshText
-         + ingBlockText('ТЕСТО', doughG, doughItems)
-         + econ.text
-         + (additions.length ? `\nФарш:\n` + techListText(f.tech) + '\n' : '')
-         + `\nТесто:\n` + techListText(dough.tech);
-  }
-
   else { // product
     const p = PRODUCTS[$('selProduct').value];
     const f = FILLINGS[$('selFilling').value];
@@ -282,13 +231,10 @@ function savePrices() {
 
 // ---------- селекторы ----------
 function fillProductSelect() {
-  // в режиме «Тесто к фаршу» показываем только продукты с тестом
-  const entries = Object.entries(PRODUCTS)
-    .filter(([k, p]) => mode !== 'fromFarsh' || p.doughShare > 0);
   const prev = $('selProduct').value;
-  $('selProduct').innerHTML = entries
+  $('selProduct').innerHTML = Object.entries(PRODUCTS)
     .map(([k, p]) => `<option value="${k}">${p.emoji} ${p.name}</option>`).join('');
-  if (entries.some(([k]) => k === prev)) $('selProduct').value = prev;
+  if (PRODUCTS[prev]) $('selProduct').value = prev;
 }
 
 function fillFillingSelect() {
@@ -307,15 +253,14 @@ function updateVisibility() {
   document.querySelector('.actions').style.display = (mode === 'prices') ? 'none' : '';
   if (mode === 'prices') return;
   const p = PRODUCTS[$('selProduct').value];
-  const withDough = (mode === 'product' || mode === 'fromFarsh') && p.doughShare > 0;
-  $('selProduct').parentElement.style.display = (mode === 'product' || mode === 'fromFarsh') ? '' : 'none';
+  const withDough = mode === 'product' && p.doughShare > 0;
+  $('selProduct').parentElement.style.display = (mode === 'product') ? '' : 'none';
   $('fieldFilling').style.display = (mode !== 'dough') ? '' : 'none';
   $('fieldDough').style.display = (mode === 'dough') ? '' : 'none';
   $('fieldRatio').style.display = withDough ? '' : 'none';
   $('lblWeight').textContent =
     mode === 'dough' ? 'Сколько теста, кг' :
-    mode === 'farsh' ? 'Сколько фарша / начинки, кг' :
-    mode === 'fromFarsh' ? 'Сколько фарша (мясо + лук), кг' : 'Сколько продукта, кг';
+    mode === 'farsh' ? 'Сколько фарша / начинки, кг' : 'Сколько продукта, кг';
   if (withDough) $('inpRatio').value = p.doughShare;
 }
 
@@ -424,7 +369,7 @@ async function init() {
   fillFillingSelect();
   fillDoughSelect();
   bindEvents();
-  // открытие вкладки по хэшу: #farsh, #dough, #fromFarsh, #prices
+  // открытие вкладки по хэшу: #farsh, #dough, #prices
   const hashTab = document.querySelector(`.tabs button[data-mode="${location.hash.slice(1)}"]`);
   if (hashTab) { hashTab.click(); return; }
   updateVisibility();
