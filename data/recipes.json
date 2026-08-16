@@ -601,7 +601,7 @@
       "name": "Пельмени",
       "emoji": "🥟",
       "dough": "pelmeni",
-      "doughShare": 42,
+      "doughShare": 30,
       "fillings": ["beef", "beefPork", "chicken", "turkey"],
       "pieceG": 12,
       "pieceNote": "1 шт ≈ 12 г"

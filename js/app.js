@@ -156,7 +156,7 @@ function render() {
 
     if (p.doughShare > 0) {
       const dough = DOUGHS[p.dough];
-      const share = Math.min(65, Math.max(35, parseFloat($('inpRatio').value) || p.doughShare));
+      const share = Math.min(70, Math.max(20, parseFloat($('inpRatio').value) || p.doughShare));
       const doughG = targetG * share / 100;
       const fillG = targetG - doughG;
       const doughItems = scale(dough, doughG);
