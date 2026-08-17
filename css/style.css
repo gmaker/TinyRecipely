@@ -75,12 +75,20 @@ table.ing tr.total td { border-bottom: none; border-top: 2px solid var(--line); 
 .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
 .error { color: #a33; font-size: 14px; }
 
+.cooked { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.cooked button {
+  padding: 10px 16px; font-size: 15px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--accent-soft); color: var(--accent);
+}
+.cooked button:disabled { border-color: var(--ok); background: #e7f0e8; color: var(--ok); cursor: default; }
+
 footer { text-align: center; color: var(--muted); font-size: 12px; margin: 20px 0; }
 footer a { color: var(--accent); }
 
 @media print {
   body { background: #fff; padding: 0; max-width: none; }
-  header p, .tabs, .actions, footer, .econ { display: none !important; }
+  header p, .tabs, .actions, footer, .econ, .cooked { display: none !important; }
   .panel:not(.print-area) { display: none !important; }
   .print-area { display: block !important; border: none; padding: 0; }
   table.ing td { font-size: 13px; padding: 3px 4px; }

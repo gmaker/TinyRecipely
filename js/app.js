@@ -202,7 +202,56 @@ function render() {
   }
 
   $('result').innerHTML = html;
+  renderCooked();
   lastCopyText = text;
+}
+
+// ---------- отметка «приготовил» (события GoatCounter) ----------
+const COOKED_LS = 'tinyrecipely_cooked';
+
+function currentRecipeKey() {
+  if (mode === 'farsh') return 'farsh-' + $('selFilling').value;
+  if (mode === 'dough') return 'dough-' + $('selDough').value;
+  return $('selProduct').value + '-' + $('selFilling').value;
+}
+
+function getCookedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(COOKED_LS)) || []); }
+  catch (e) { return new Set(); }
+}
+
+function renderCooked() {
+  const key = currentRecipeKey();
+  const done = getCookedSet().has(key);
+  const div = document.createElement('div');
+  div.className = 'block cooked';
+  div.innerHTML =
+    `<button id="cookedBtn" ${done ? 'disabled' : ''}>${done ? '✅ Отмечено: приготовлено' : '🍳 Приготовил(а)!'}</button>` +
+    `<span id="cookedCount" class="hint"></span>`;
+  $('result').appendChild(div);
+  fetch('https://gmaker.goatcounter.com/counter/' + encodeURI('cooked/' + key) + '.json')
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (d && d.count) $('cookedCount').textContent = ' готовили ' + String(d.count).trim() + ' раз';
+    })
+    .catch(() => {});
+}
+
+function onCookedClick() {
+  const key = currentRecipeKey();
+  const set = getCookedSet();
+  if (set.has(key)) return;
+  if (window.goatcounter && window.goatcounter.count) {
+    window.goatcounter.count({ path: 'cooked/' + key, title: 'Приготовлено: ' + key, event: true });
+  }
+  set.add(key);
+  localStorage.setItem(COOKED_LS, JSON.stringify([...set]));
+  const btn = $('cookedBtn');
+  btn.disabled = true;
+  btn.textContent = '✅ Отмечено: приготовлено';
+  const c = $('cookedCount');
+  const m = (c.textContent || '').match(/\d+/);
+  c.textContent = ' готовили ' + ((m ? parseInt(m[0], 10) : 0) + 1) + ' раз';
 }
 
 // ---------- вкладка «Цены» ----------
@@ -305,6 +354,7 @@ function bindEvents() {
     }
   });
   $('result').addEventListener('click', e => {
+    if (e.target.id === 'cookedBtn') { onCookedClick(); return; }
     if (e.target.id === 'resetPrices') {
       localStorage.removeItem(PRICES_LS);
       PRICES = { ...PRICES_DEFAULT };
