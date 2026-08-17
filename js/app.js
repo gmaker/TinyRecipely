@@ -155,7 +155,7 @@ function render() {
     const pieces = Math.round(targetG / p.pieceG);
 
     if (p.doughShare > 0) {
-      const dough = DOUGHS[p.dough];
+      const dough = DOUGHS[$('selDough').value] || DOUGHS[p.dough];
       const share = Math.min(70, Math.max(20, parseFloat($('inpRatio').value) || p.doughShare));
       const doughG = targetG * share / 100;
       const fillG = targetG - doughG;
@@ -296,8 +296,16 @@ function fillFillingSelect() {
 }
 
 function fillDoughSelect() {
-  $('selDough').innerHTML = Object.entries(DOUGHS)
-    .map(([k, d]) => `<option value="${k}">${d.name}</option>`).join('');
+  const p = PRODUCTS[$('selProduct').value];
+  // в режиме продукта — только совместимые с продуктом теста, иначе все
+  const keys = (mode === 'product')
+    ? (p.doughOptions || (p.dough ? [p.dough] : []))
+    : Object.keys(DOUGHS);
+  const prev = $('selDough').value;
+  $('selDough').innerHTML = keys
+    .map(k => `<option value="${k}">${DOUGHS[k].name}</option>`).join('');
+  if (keys.includes(prev)) $('selDough').value = prev;
+  else if (mode === 'product' && p.dough) $('selDough').value = p.dough;
 }
 
 function updateVisibility() {
@@ -308,7 +316,7 @@ function updateVisibility() {
   const withDough = mode === 'product' && p.doughShare > 0;
   $('selProduct').parentElement.style.display = (mode === 'product') ? '' : 'none';
   $('fieldFilling').style.display = (mode !== 'dough') ? '' : 'none';
-  $('fieldDough').style.display = (mode === 'dough') ? '' : 'none';
+  $('fieldDough').style.display = (mode === 'dough' || withDough) ? '' : 'none';
   $('fieldRatio').style.display = withDough ? '' : 'none';
   $('lblWeight').textContent =
     mode === 'dough' ? 'Сколько теста, кг' :
@@ -326,12 +334,13 @@ function bindEvents() {
       history.replaceState(null, '', '#' + mode);
       fillProductSelect();
       fillFillingSelect();
+      fillDoughSelect();
       updateVisibility();
       render();
     });
   });
 
-  $('selProduct').addEventListener('change', () => { fillFillingSelect(); updateVisibility(); render(); });
+  $('selProduct').addEventListener('change', () => { fillFillingSelect(); fillDoughSelect(); updateVisibility(); render(); });
   $('selFilling').addEventListener('change', render);
   $('selDough').addEventListener('change', render);
   $('inpRatio').addEventListener('input', render);
