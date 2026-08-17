@@ -224,17 +224,20 @@ function renderCooked() {
   const key = currentRecipeKey();
   const done = getCookedSet().has(key);
   const div = document.createElement('div');
-  div.className = 'block cooked';
+  div.className = 'cooked';
   div.innerHTML =
     `<button id="cookedBtn" ${done ? 'disabled' : ''}>${done ? '✅ Отмечено: приготовлено' : '🍳 Приготовил(а)!'}</button>` +
-    `<span id="cookedCount" class="hint"></span>`;
-  $('result').appendChild(div);
+    `<span id="cookedCount" class="hint">…</span>`;
+  const sub = $('result').querySelector('.sub');
+  if (sub) sub.insertAdjacentElement('afterend', div);
+  else $('result').prepend(div);
   fetch('https://gmaker.goatcounter.com/counter/' + encodeURI('cooked/' + key) + '.json')
-    .then(r => r.ok ? r.json() : null)
+    .then(r => r.ok ? r.json() : Promise.reject())
     .then(d => {
-      if (d && d.count) $('cookedCount').textContent = ' готовили ' + String(d.count).trim() + ' раз';
+      const n = d && d.count ? String(d.count).trim() : '0';
+      $('cookedCount').textContent = 'готовили ' + n + ' раз';
     })
-    .catch(() => {});
+    .catch(() => { $('cookedCount').textContent = 'ещё никто не отмечал'; });
 }
 
 function onCookedClick() {
